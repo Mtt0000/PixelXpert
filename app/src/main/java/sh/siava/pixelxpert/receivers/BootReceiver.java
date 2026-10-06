@@ -7,7 +7,6 @@ import android.util.Log;
 
 import sh.siava.pixelxpert.BuildConfig;
 import sh.siava.pixelxpert.utils.TimeSyncScheduler;
-import sh.siava.pixelxpert.utils.UpdateScheduler;
 
 public class BootReceiver extends BroadcastReceiver {
 	@Override
@@ -17,7 +16,6 @@ public class BootReceiver extends BroadcastReceiver {
 			if(BuildConfig.DEBUG)
 				Log.d("BootReceiver", "Broadcast received: " + intent.getAction());
 
-			UpdateScheduler.scheduleUpdates(context);
 			TimeSyncScheduler.scheduleTimeSync(context);
 		}
 	}

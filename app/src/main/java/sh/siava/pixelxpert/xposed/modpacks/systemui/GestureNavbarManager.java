@@ -61,18 +61,22 @@ public class GestureNavbarManager extends XposedModPack {
 		BackPanelControllerClass
 				.before("onMotionEvent")
 				.run(param -> {
-					MotionEvent ev = (MotionEvent) param.args[0];
+					try {
+						MotionEvent ev = (MotionEvent) param.args[0];
 
-					if(ev.getActionMasked() == ACTION_DOWN) //down action is enough. once gesture is refused it won't accept further actions
-					{
-						if(notWithinInsets(ev.getX(),
-								ev.getY(),
-								(Point) getObjectField(EdgeBackGestureHandler, "mDisplaySize"),
-								getFloatField(EdgeBackGestureHandler, "mBottomGestureHeight")))
+						if(ev.getActionMasked() == ACTION_DOWN) //down action is enough. once gesture is refused it won't accept further actions
 						{
-							setObjectField(EdgeBackGestureHandler, "mAllowGesture", false); //act like the gesture was not good enough
-							param.setResult(null); //and stop the current method too
+							if(notWithinInsets(ev.getX(),
+									ev.getY(),
+									(Point) getObjectField(EdgeBackGestureHandler, "mDisplaySize"),
+									getFloatField(EdgeBackGestureHandler, "mBottomGestureHeight")))
+							{
+								setObjectField(EdgeBackGestureHandler, "mAllowGesture", false); //act like the gesture was not good enough
+								param.setResult(null); //and stop the current method too
+							}
 						}
+					} catch (Throwable t) {
+						// Suppress crash on Android 17 if obfuscated / missing fields
 					}
 				});
 
@@ -80,14 +84,18 @@ public class GestureNavbarManager extends XposedModPack {
 		NavigationBarEdgePanelClass
 				.before("onMotionEvent")
 				.run(param -> {
-					MotionEvent event = (MotionEvent) param.args[0];
-					if(event.getAction() == ACTION_DOWN)
-					{
-						initialBackX = event.getX();
-					}
-					if (notWithinInsets(initialBackX, event.getY(), (Point) getObjectField(param.thisObject, "mDisplaySize"), 0)) {
-						//event.setAction(MotionEvent.ACTION_CANCEL);
-						param.setResult(null);
+					try {
+						MotionEvent event = (MotionEvent) param.args[0];
+						if(event.getAction() == ACTION_DOWN)
+						{
+							initialBackX = event.getX();
+						}
+						if (notWithinInsets(initialBackX, event.getY(), (Point) getObjectField(param.thisObject, "mDisplaySize"), 0)) {
+							//event.setAction(MotionEvent.ACTION_CANCEL);
+							param.setResult(null);
+						}
+					} catch (Throwable t) {
+						// Suppress crash on Android 17 if obfuscated / missing fields
 					}
 				});
 		//endregion

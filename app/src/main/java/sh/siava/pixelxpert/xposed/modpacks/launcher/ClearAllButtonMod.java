@@ -24,7 +24,6 @@ import sh.siava.pixelxpert.R;
 import sh.siava.pixelxpert.xposed.XPLauncher;
 import sh.siava.pixelxpert.xposed.XposedModPack;
 import sh.siava.pixelxpert.xposed.annotations.LauncherModPack;
-import sh.siava.pixelxpert.xposed.utils.SystemUtils;
 import sh.siava.pixelxpert.xposed.utils.reflection.ReflectedClass;
 
 @SuppressWarnings("RedundantThrows")
@@ -42,7 +41,7 @@ public class ClearAllButtonMod extends XposedModPack {
 	@Override
 	public void onPreferenceUpdated(String... Key) {
 		if (Key.length > 0 && Key[0].equals("RecentClearAllReposition")) {
-			SystemUtils.killSelf();
+
 		}
 
 		RecentClearAllReposition = Xprefs.getBoolean("RecentClearAllReposition", false);
@@ -79,41 +78,44 @@ public class ClearAllButtonMod extends XposedModPack {
 				.run(param -> {
 					if (!RecentClearAllReposition) return;
 
-					clearAllButton = new FrameLayout(mContext);
+					try {
+						clearAllButton = new FrameLayout(mContext);
 
-					clearAllIcon = new ImageView(mContext);
-					clearAllIcon.setImageDrawable(ResourcesCompat.getDrawable(XPLauncher.moduleResources, R.drawable.ic_clear_all, mContext.getTheme()));
-					clearAllIcon.getDrawable().setTintList(getThemedColor(mContext));
-					clearAllButton.addView(clearAllIcon);
-
-					FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-
-					params.rightMargin = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 16, Resources.getSystem().getDisplayMetrics());
-
-					params.gravity = Gravity.END | Gravity.CENTER_VERTICAL;
-
-					clearAllButton.setLayoutParams(params);
-					clearAllButton.setOnClickListener(v -> {
-						if (recentView != null) {
-							try {
-								dismissAllTasksMethod.invoke(recentView, v);
-							} catch (Throwable ignored) {
-							}
+						clearAllIcon = new ImageView(mContext);
+						try {
+							clearAllIcon.setImageDrawable(ResourcesCompat.getDrawable(XPLauncher.moduleResources, R.drawable.ic_clear_all, mContext.getTheme()));
+							clearAllIcon.getDrawable().setTintList(getThemedColor(mContext));
+						} catch (Throwable t) {
+							clearAllIcon.setImageDrawable(ResourcesCompat.getDrawable(mContext.getResources(), android.R.drawable.ic_menu_close_clear_cancel, mContext.getTheme()));
 						}
-					});
+						clearAllButton.addView(clearAllIcon);
 
-//				clearAllButton.setPadding(margins/2,0,margins/2,0);
-					FrameLayout parent = (FrameLayout) param.thisObject;
-					parent.getLayoutParams().height = ViewGroup.LayoutParams.MATCH_PARENT; //resize to whole screen
-					parent.addView(clearAllButton);
-					clearAllButton.setVisibility(GONE);
+						FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+
+						params.rightMargin = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 16, Resources.getSystem().getDisplayMetrics());
+
+						params.gravity = Gravity.END | Gravity.CENTER_VERTICAL;
+
+						clearAllButton.setLayoutParams(params);
+						clearAllButton.setOnClickListener(v -> {
+							if (recentView != null) {
+								try {
+									dismissAllTasksMethod.invoke(recentView, v);
+								} catch (Throwable ignored) {
+								}
+							}
+						});
+
+						FrameLayout parent = (FrameLayout) param.thisObject;
+						parent.getLayoutParams().height = ViewGroup.LayoutParams.MATCH_PARENT; //resize to whole screen
+						parent.addView(clearAllButton);
+						clearAllButton.setVisibility(GONE);
+					} catch (Throwable ignored) {}
 				});
 	}
 
 	public static ColorStateList getThemedColor(Context context) {
-		return getSystemAttrColor(context, SystemUtils.isDarkMode()
-				? android.R.attr.textColorPrimaryInverse
-				: android.R.attr.textColorPrimary);
+		return getSystemAttrColor(context, android.R.attr.textColorPrimary);
 	}
 
 	public static ColorStateList getSystemAttrColor(Context context, int attr) {

@@ -4,10 +4,6 @@ import static android.view.MotionEvent.ACTION_DOWN;
 import static de.robv.android.xposed.XposedHelpers.getFloatField;
 import static de.robv.android.xposed.XposedHelpers.getObjectField;
 import static de.robv.android.xposed.XposedHelpers.setObjectField;
-import static sh.siava.pixelxpert.xposed.XPrefs.Xprefs;
-
-
-
 
 import android.content.Context;
 import android.graphics.Point;
@@ -22,10 +18,10 @@ import sh.siava.pixelxpert.xposed.utils.reflection.ReflectedClass;
 @SystemUIModPack
 public class GestureNavbarManager extends XposedModPack {
 	//region Back gesture
-	private static float backGestureHeightFractionLeft = 1f; // % of screen height. can be anything between 0 to 1
-	private static float backGestureHeightFractionRight = 1f; // % of screen height. can be anything between 0 to 1
-	private static boolean leftEnabled = true;
-	private static boolean rightEnabled = true;
+	private static float backGestureHeightFractionLeft = 0f; // % of screen height. can be anything between 0 to 1
+	private static float backGestureHeightFractionRight = 0f; // % of screen height. can be anything between 0 to 1
+	private static boolean leftEnabled = false;
+	private static boolean rightEnabled = false;
 	float initialBackX = 0;
 
 	Object EdgeBackGestureHandler;
@@ -36,14 +32,11 @@ public class GestureNavbarManager extends XposedModPack {
 	}
 
 	public void onPreferenceUpdated(String... Key) {
-		if (Xprefs == null) return;
-
-		//region Back gesture
-		leftEnabled = Xprefs.getBoolean("BackFromLeft", true);
-		rightEnabled = Xprefs.getBoolean("BackFromRight", true);
-		backGestureHeightFractionLeft = Xprefs.getSliderInt( "BackLeftHeight", 100) / 100f;
-		backGestureHeightFractionRight = Xprefs.getSliderInt( "BackRightHeight", 100) / 100f;
-		//endregion
+		// Hardcoded values to disable system back gesture
+		leftEnabled = false;
+		rightEnabled = false;
+		backGestureHeightFractionLeft = 0f;
+		backGestureHeightFractionRight = 0f;
 	}
 
 	@Override

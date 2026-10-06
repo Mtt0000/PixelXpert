@@ -2,7 +2,6 @@ package sh.siava.pixelxpert.xposed.modpacks.launcher;
 
 import static android.view.View.GONE;
 import static de.robv.android.xposed.XposedHelpers.findMethodBestMatch;
-import static sh.siava.pixelxpert.xposed.XPrefs.Xprefs;
 
 import android.content.Context;
 import android.content.res.ColorStateList;
@@ -30,7 +29,7 @@ import sh.siava.pixelxpert.xposed.utils.reflection.ReflectedClass;
 @LauncherModPack
 public class ClearAllButtonMod extends XposedModPack {
 	private Object recentView;
-	private static boolean RecentClearAllReposition = false;
+	private static boolean RecentClearAllReposition = true;
 	private ImageView clearAllIcon;
 	private FrameLayout clearAllButton;
 
@@ -40,11 +39,7 @@ public class ClearAllButtonMod extends XposedModPack {
 
 	@Override
 	public void onPreferenceUpdated(String... Key) {
-		if (Key.length > 0 && Key[0].equals("RecentClearAllReposition")) {
-
-		}
-
-		RecentClearAllReposition = Xprefs.getBoolean("RecentClearAllReposition", false);
+		RecentClearAllReposition = true;
 	}
 
 	@Override

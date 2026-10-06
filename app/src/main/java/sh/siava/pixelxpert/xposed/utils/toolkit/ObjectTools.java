@@ -22,7 +22,6 @@ import java.util.Random;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
-import sh.siava.pixelxpert.xposed.utils.NetworkTraffic;
 import sh.siava.pixelxpert.xposed.utils.reflection.ReflectedClass;
 
 /** @noinspection unused, RedundantThrows */
@@ -90,13 +89,10 @@ public class ObjectTools {
 		spanSizeString = new SpannableString(formattedData);
 
 		if (textColor != null) {
-			spanSizeString.setSpan(new NetworkTraffic.TrafficStyle(textColor), 0, (formattedData).length(),
-					Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
 		}
 
 		spanUnitString = new SpannableString(unit + indicatorSymbol);
-		spanUnitString.setSpan(new RelativeSizeSpan(unitSizeFactor), 0, (unit + indicatorSymbol).length(),
-				Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+		spanUnitString.setSpan(new RelativeSizeSpan(unitSizeFactor), 0, (unit + indicatorSymbol).length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
 		return new SpannableStringBuilder().append(spanSizeString).append(unitSeparator).append(spanUnitString);
 	}
 

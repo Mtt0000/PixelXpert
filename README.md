@@ -20,17 +20,20 @@ A ready-to-use script is provided to safely compile and package the module:
 ./build_minimal.sh
 ```
 
-The final output will be the `PixelXpert-Minimal.zip` file generated in the project's root folder.
+The script will generate two files in the project's root folder:
+- `PixelXpert-Minimal.zip` (The Magisk/KernelSU module)
+- `PixelXpert-Minimal.apk` (The app to install manually)
 
 ## Installation Tutorial
 
 1. Install **KernelSU** or **Magisk** on your device.
 2. Ensure you have **LSPosed** (Zygisk version preferred) installed.
 3. Flash the generated `PixelXpert-Minimal.zip` file using Magisk or KernelSU.
-4. Reboot your device.
-5. Open LSPosed Manager and **manually enable the module**.
-6. Make sure that **Pixel Launcher** and **System UI** are checked in the module's Scope list.
-7. Reboot the device once more to apply the hooks.
+4. Install the generated `PixelXpert-Minimal.apk` on your device like a normal app.
+5. Reboot your device.
+6. Open LSPosed Manager and **manually enable the module**.
+7. Make sure that **Pixel Launcher** and **System UI** are checked in the module's Scope list.
+8. Reboot the device once more to apply the hooks.
 
 ## Usage
 

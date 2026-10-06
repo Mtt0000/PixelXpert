@@ -4,12 +4,12 @@ chmod +x gradlew
 ./gradlew :app:assembleRelease
 
 echo "Packaging KernelSU/Magisk Module..."
-mkdir -p MagiskModBase/system/priv-app/PixelXpert
-cp app/build/outputs/apk/release/PixelXpert.apk MagiskModBase/system/priv-app/PixelXpert/
 
 cd MagiskModBase
 zip -r -9 -q ../PixelXpert-Minimal.zip *
 cd ..
 
-rm -rf MagiskModBase/system/priv-app/PixelXpert/PixelXpert.apk
-echo "Done! File generated: PixelXpert-Minimal.zip"
+echo "Copying APK for manual installation..."
+cp app/build/outputs/apk/release/PixelXpert.apk ./PixelXpert-Minimal.apk
+
+echo "Done! Files generated: PixelXpert-Minimal.zip and PixelXpert-Minimal.apk"

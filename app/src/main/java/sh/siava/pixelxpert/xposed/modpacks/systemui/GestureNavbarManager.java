@@ -13,6 +13,7 @@ import io.github.libxposed.api.XposedModuleInterface;
 import sh.siava.pixelxpert.xposed.XposedModPack;
 import sh.siava.pixelxpert.xposed.annotations.SystemUIModPack;
 import sh.siava.pixelxpert.xposed.utils.reflection.ReflectedClass;
+import sh.siava.pixelxpert.xposed.utils.KSUConfigReader;
 
 @SuppressWarnings("RedundantThrows")
 @SystemUIModPack
@@ -32,15 +33,22 @@ public class GestureNavbarManager extends XposedModPack {
 	}
 
 	public void onPreferenceUpdated(String... Key) {
-		// Hardcoded values to disable system back gesture
-		leftEnabled = false;
-		rightEnabled = false;
-		backGestureHeightFractionLeft = 0f;
-		backGestureHeightFractionRight = 0f;
+		boolean disableGestures = KSUConfigReader.getBoolean("back_gesture", true);
+		if (disableGestures) {
+			leftEnabled = false;
+			rightEnabled = false;
+			backGestureHeightFractionLeft = 0f;
+			backGestureHeightFractionRight = 0f;
+		}
 	}
 
 	@Override
 	public void onPackageLoaded(XposedModuleInterface.PackageReadyParam PRParam) throws Throwable {
+		onPreferenceUpdated(); // Initialize settings from KSU config
+
+		boolean disableGestures = KSUConfigReader.getBoolean("back_gesture", true);
+		if (!disableGestures) return;
+
 		ReflectedClass EdgeBackGestureHandlerClass = ReflectedClass.ofIfPossible("com.android.systemui.navigationbar.gestural.EdgeBackGestureHandler");
 		ReflectedClass NavigationBarEdgePanelClass = ReflectedClass.ofIfPossible("com.android.systemui.navigationbar.gestural.NavigationBarEdgePanel");
 		ReflectedClass BackPanelControllerClass = ReflectedClass.of("com.android.systemui.navigationbar.gestural.BackPanelController");

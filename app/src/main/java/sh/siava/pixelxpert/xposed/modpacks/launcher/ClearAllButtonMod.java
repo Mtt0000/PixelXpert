@@ -76,11 +76,21 @@ public class ClearAllButtonMod extends XposedModPack {
 
 					try {
 						FrameLayout parent = (FrameLayout) param.thisObject;
-						int actionButtonsId = mContext.getResources().getIdentifier("action_buttons", "id", mContext.getPackageName());
-						if (actionButtonsId == 0) return;
 
-						ViewGroup actionButtonsView = parent.findViewById(actionButtonsId);
-						if (actionButtonsView == null) return;
+						ViewGroup actionButtonsView = null;
+						// Find the action buttons container dynamically (usually a LinearLayout containing Screenshot/Select)
+						for (int i = 0; i < parent.getChildCount(); i++) {
+							View child = parent.getChildAt(i);
+							if (child instanceof android.widget.LinearLayout) {
+								actionButtonsView = (ViewGroup) child;
+								break;
+							}
+						}
+
+						if (actionButtonsView == null) {
+							// Fallback if not wrapped in LinearLayout
+							actionButtonsView = parent;
+						}
 
 						int clearAllResId = mContext.getResources().getIdentifier("recents_clear_all", "string", mContext.getPackageName());
 						CharSequence clearAllText = clearAllResId != 0 ? mContext.getResources().getString(clearAllResId) : "Clear all";

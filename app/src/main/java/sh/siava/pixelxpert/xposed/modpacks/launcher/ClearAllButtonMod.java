@@ -30,8 +30,7 @@ import sh.siava.pixelxpert.xposed.utils.reflection.ReflectedClass;
 public class ClearAllButtonMod extends XposedModPack {
 	private Object recentView;
 	private static boolean RecentClearAllReposition = true;
-	private ImageView clearAllIcon;
-	private FrameLayout clearAllButton;
+	private android.widget.Button clearAllButton;
 
 	public ClearAllButtonMod(Context context) {
 		super(context);
@@ -56,8 +55,10 @@ public class ClearAllButtonMod extends XposedModPack {
 				.after("setColorTint")
 				.run(param -> {
 					if (!RecentClearAllReposition) return;
-
-					clearAllIcon.getDrawable().setTintList(getThemedColor(mContext));
+					if (clearAllButton != null) {
+						clearAllButton.setTextColor(getThemedColor(mContext));
+						clearAllButton.setCompoundDrawableTintList(getThemedColor(mContext));
+					}
 				});
 
 		RecentsViewClass
@@ -69,41 +70,47 @@ public class ClearAllButtonMod extends XposedModPack {
 				});
 
 		OverviewActionsViewClass
-				.before("onFinishInflate")
+				.after("onFinishInflate")
 				.run(param -> {
 					if (!RecentClearAllReposition) return;
 
 					try {
-						clearAllButton = new FrameLayout(mContext);
+						FrameLayout parent = (FrameLayout) param.thisObject;
+						int actionButtonsId = mContext.getResources().getIdentifier("action_buttons", "id", mContext.getPackageName());
+						if (actionButtonsId == 0) return;
 
-						clearAllIcon = new ImageView(mContext);
-						try {
-							clearAllIcon.setImageDrawable(ResourcesCompat.getDrawable(XPLauncher.moduleResources, R.drawable.ic_clear_all, mContext.getTheme()));
-							clearAllIcon.getDrawable().setTintList(getThemedColor(mContext));
-						} catch (Throwable t) {
-							clearAllIcon.setImageDrawable(ResourcesCompat.getDrawable(mContext.getResources(), android.R.drawable.ic_menu_close_clear_cancel, mContext.getTheme()));
+						ViewGroup actionButtonsView = parent.findViewById(actionButtonsId);
+						if (actionButtonsView == null) return;
+
+						int clearAllResId = mContext.getResources().getIdentifier("recents_clear_all", "string", mContext.getPackageName());
+						CharSequence clearAllText = clearAllResId != 0 ? mContext.getResources().getString(clearAllResId) : "Clear all";
+
+						int layoutId = mContext.getResources().getIdentifier("clear_all_button", "layout", mContext.getPackageName());
+						if (layoutId != 0) {
+							clearAllButton = (android.widget.Button) android.view.LayoutInflater.from(mContext).inflate(layoutId, actionButtonsView, false);
+							clearAllButton.setText(clearAllText);
+						} else {
+							clearAllButton = new android.widget.Button(mContext, null, android.R.attr.borderlessButtonStyle);
+							clearAllButton.setText(clearAllText);
+							clearAllButton.setTextColor(getThemedColor(mContext));
+							clearAllButton.setAllCaps(false);
+
+							android.widget.LinearLayout.LayoutParams params = new android.widget.LinearLayout.LayoutParams(
+									ViewGroup.LayoutParams.WRAP_CONTENT,
+									ViewGroup.LayoutParams.WRAP_CONTENT
+							);
+							clearAllButton.setLayoutParams(params);
 						}
-						clearAllButton.addView(clearAllIcon);
 
-						FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-
-						params.rightMargin = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 16, Resources.getSystem().getDisplayMetrics());
-
-						params.gravity = Gravity.END | Gravity.CENTER_VERTICAL;
-
-						clearAllButton.setLayoutParams(params);
 						clearAllButton.setOnClickListener(v -> {
 							if (recentView != null) {
 								try {
 									dismissAllTasksMethod.invoke(recentView, v);
-								} catch (Throwable ignored) {
-								}
+								} catch (Throwable ignored) {}
 							}
 						});
 
-						FrameLayout parent = (FrameLayout) param.thisObject;
-						parent.getLayoutParams().height = ViewGroup.LayoutParams.MATCH_PARENT; //resize to whole screen
-						parent.addView(clearAllButton);
+						actionButtonsView.addView(clearAllButton, 0);
 						clearAllButton.setVisibility(GONE);
 					} catch (Throwable ignored) {}
 				});

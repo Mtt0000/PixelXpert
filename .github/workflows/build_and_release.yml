@@ -36,13 +36,13 @@ jobs:
       run: ./build_minimal.sh
 
     - name: Upload APK artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: PixelXpert-Minimal-APK
         path: PixelXpert-Minimal.apk
 
     - name: Upload ZIP artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: PixelXpert-Minimal-ZIP
         path: PixelXpert-Minimal.zip

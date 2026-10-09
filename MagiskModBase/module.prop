@@ -5,3 +5,4 @@ versionCode=1
 author=Pixel Xpert Team (Modded)
 description=Minimal KernelSU/LSPosed module with Clear All and Back Gestures mods for Pixel ROMs. Android 17 (API 36).
 minMagisk=25000
+webroot=1

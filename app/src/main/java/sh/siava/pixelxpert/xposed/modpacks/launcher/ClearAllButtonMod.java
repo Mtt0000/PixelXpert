@@ -24,6 +24,7 @@ import sh.siava.pixelxpert.xposed.XPLauncher;
 import sh.siava.pixelxpert.xposed.XposedModPack;
 import sh.siava.pixelxpert.xposed.annotations.LauncherModPack;
 import sh.siava.pixelxpert.xposed.utils.reflection.ReflectedClass;
+import sh.siava.pixelxpert.xposed.utils.KSUConfigReader;
 
 @SuppressWarnings("RedundantThrows")
 @LauncherModPack
@@ -38,11 +39,13 @@ public class ClearAllButtonMod extends XposedModPack {
 
 	@Override
 	public void onPreferenceUpdated(String... Key) {
-		RecentClearAllReposition = true;
+		RecentClearAllReposition = KSUConfigReader.getBoolean("clear_all", true);
 	}
 
 	@Override
 	public void onPackageLoaded(XposedModuleInterface.PackageReadyParam PRParam) throws Throwable {
+		RecentClearAllReposition = KSUConfigReader.getBoolean("clear_all", true);
+
 		ReflectedClass OverviewActionsViewClass = ReflectedClass.of("com.android.quickstep.views.OverviewActionsView");
 		ReflectedClass RecentsViewClass = ReflectedClass.of("com.android.quickstep.views.RecentsView");
 		Method dismissAllTasksMethod = findMethodBestMatch(RecentsViewClass.getClazz(), "dismissAllTasks", View.class);

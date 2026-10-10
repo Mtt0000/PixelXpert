@@ -35,7 +35,7 @@
 
     <div class="setting-group">
         <div class="setting-title">Disable System Back Gestures</div>
-        <div class="setting-desc">Disables the default edge back gestures. (Requires reboot)</div>
+        <div class="setting-desc">Disables the default edge back gestures. (Applies immediately)</div>
         <label class="switch">
             <input type="checkbox" id="pref_back_gesture">
             <span class="slider"></span>
@@ -101,6 +101,16 @@
                 // Save properties (persist so they survive reboots and are readable globally)
                 await ksu.exec(`setprop persist.sys.pxl.clear_all ${clearAll}`);
                 await ksu.exec(`setprop persist.sys.pxl.back_gest ${backGest}`);
+
+                // Apply back gesture settings immediately via system command
+                if (backGest) {
+                    await ksu.exec(`settings put secure back_gesture_inset_scale_left 0.0`);
+                    await ksu.exec(`settings put secure back_gesture_inset_scale_right 0.0`);
+                } else {
+                    await ksu.exec(`settings delete secure back_gesture_inset_scale_left`);
+                    await ksu.exec(`settings delete secure back_gesture_inset_scale_right`);
+                }
+
 
                 // Toggle clipboard activity dynamically via pm
                 const PREFS_FILE = '/data/adb/modules/PixelXpert-Minimal/webroot/clipboard.conf';

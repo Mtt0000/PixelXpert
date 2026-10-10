@@ -4,23 +4,16 @@ import static android.view.View.GONE;
 import static de.robv.android.xposed.XposedHelpers.findMethodBestMatch;
 
 import android.content.Context;
-import android.content.res.ColorStateList;
-import android.content.res.Resources;
-import android.content.res.TypedArray;
+import android.graphics.Color;
+import android.graphics.drawable.GradientDrawable;
 import android.util.TypedValue;
-import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
-import android.widget.ImageView;
-
-import androidx.core.content.res.ResourcesCompat;
 
 import java.lang.reflect.Method;
 
 import io.github.libxposed.api.XposedModuleInterface;
-import sh.siava.pixelxpert.R;
-import sh.siava.pixelxpert.xposed.XPLauncher;
 import sh.siava.pixelxpert.xposed.XposedModPack;
 import sh.siava.pixelxpert.xposed.annotations.LauncherModPack;
 import sh.siava.pixelxpert.xposed.utils.reflection.ReflectedClass;
@@ -55,20 +48,9 @@ public class ClearAllButtonMod extends XposedModPack {
 				.run(param -> recentView = param.thisObject);
 
 		RecentsViewClass
-				.after("setColorTint")
-				.run(param -> {
-					if (!RecentClearAllReposition) return;
-					if (clearAllButton != null) {
-						clearAllButton.setTextColor(getThemedColor(mContext));
-						clearAllButton.setCompoundDrawableTintList(getThemedColor(mContext));
-					}
-				});
-
-		RecentsViewClass
 				.after("setVisibility")
 				.run(param -> {
 					if (clearAllButton == null) return;
-
 					clearAllButton.setVisibility((Integer) param.args[0]);
 				});
 
@@ -105,13 +87,27 @@ public class ClearAllButtonMod extends XposedModPack {
 						} else {
 							clearAllButton = new android.widget.Button(mContext, null, android.R.attr.borderlessButtonStyle);
 							clearAllButton.setText(clearAllText);
-							clearAllButton.setTextColor(getThemedColor(mContext));
+							clearAllButton.setTextColor(Color.WHITE);
 							clearAllButton.setAllCaps(false);
+
+							// Set the background as a semi-transparent black pill
+							GradientDrawable background = new GradientDrawable();
+							background.setColor(0x80000000); // Semi-transparent black
+							background.setCornerRadius(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 24, mContext.getResources().getDisplayMetrics()));
+							clearAllButton.setBackground(background);
+
+							// Set padding to match other buttons (Screenshot/Select)
+							int paddingHorizontal = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 16, mContext.getResources().getDisplayMetrics());
+							int paddingVertical = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 8, mContext.getResources().getDisplayMetrics());
+							clearAllButton.setPadding(paddingHorizontal, paddingVertical, paddingHorizontal, paddingVertical);
 
 							android.widget.LinearLayout.LayoutParams params = new android.widget.LinearLayout.LayoutParams(
 									ViewGroup.LayoutParams.WRAP_CONTENT,
 									ViewGroup.LayoutParams.WRAP_CONTENT
 							);
+
+							// Add margin right
+							params.rightMargin = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 8, mContext.getResources().getDisplayMetrics());
 							clearAllButton.setLayoutParams(params);
 						}
 
@@ -127,16 +123,5 @@ public class ClearAllButtonMod extends XposedModPack {
 						clearAllButton.setVisibility(GONE);
 					} catch (Throwable ignored) {}
 				});
-	}
-
-	public static ColorStateList getThemedColor(Context context) {
-		return getSystemAttrColor(context, android.R.attr.textColorPrimary);
-	}
-
-	public static ColorStateList getSystemAttrColor(Context context, int attr) {
-		try(TypedArray a = context.obtainStyledAttributes(new int[]{attr}))
-		{
-			return a.getColorStateList(a.getIndex(0));
-		}
 	}
 }

@@ -20,34 +20,12 @@
 
 		<!-- Removed Launcher activities so it's hidden from the app drawer -->
 
-		<service
-			android:name=".service.PixelXpertProxy"
-			android:exported="true"
-			tools:ignore="ExportedService" />
-
-		<receiver
-			android:name=".receivers.BootReceiver"
-			android:enabled="true"
-			android:exported="true">
-			<intent-filter>
-				<action android:name="android.intent.action.BOOT_COMPLETED" />
-			</intent-filter>
-		</receiver>
-
-		<receiver android:name=".receivers.NotificationActionHandler"
-			android:exported="true"
-            tools:ignore="ExportedReceiver" />
-
 		<provider
 			android:name=".utils.RemotePrefProvider"
 			android:authorities="sh.siava.pixelxpert"
 			android:directBootAware="true"
 			android:exported="true"
 			tools:ignore="ExportedContentProvider" />
-
-		<meta-data
-			android:name="com.google.mlkit.vision.DEPENDENCIES"
-			android:value="subject_segment" />
 
 		<activity
 			android:name=".ClipboardShareActivity"

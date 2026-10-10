@@ -116,11 +116,6 @@ public class SystemUtils {
 
 	private static void runRootCommand(String command)
 	{
-		XPLauncher.enqueueProxyCommand(proxy -> {
-			try {
-				proxy.runRootCommand(command);
-			} catch (Throwable ignored) {}
-		});
 	}
 
 	public static boolean isFlashOn() {
@@ -561,25 +556,6 @@ public class SystemUtils {
 	static boolean darkSwitching = false;
 
 	public static void doubleToggleDarkMode() {
-		XPLauncher.enqueueProxyCommand(proxy -> {
-			boolean isDark = isDarkMode();
-			new Thread(() -> {
-				try {
-					while (darkSwitching) {
-						Thread.currentThread().wait(100);
-					}
-					darkSwitching = true;
-
-					proxy.runRootCommand("cmd uimode night " + (isDark ? "no" : "yes"));
-					threadSleep(1000);
-					proxy.runRootCommand("cmd uimode night " + (isDark ? "yes" : "no"));
-
-					threadSleep(500);
-					darkSwitching = false;
-				} catch (Exception ignored) {
-				}
-			}).start();
-		});
 	}
 
 	public static void killSelf()

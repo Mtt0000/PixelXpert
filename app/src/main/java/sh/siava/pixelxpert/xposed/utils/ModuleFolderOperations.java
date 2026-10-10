@@ -23,7 +23,6 @@ public class ModuleFolderOperations {
 			}
 			else
 			{
-				XPLauncher.enqueueProxyCommand(proxy -> proxy.runRootCommand(command));
 			}
 		}
 		catch (Throwable ignored){}

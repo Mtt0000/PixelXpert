@@ -10,8 +10,11 @@ import android.widget.Toast;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
+import java.util.Arrays;
+import java.util.List;
 
 import sh.siava.pixelxpert.PixelXpert;
+import com.topjohnwu.superuser.Shell;
 
 public class SettingsActivity extends Activity {
     @Override
@@ -31,15 +34,12 @@ public class SettingsActivity extends Activity {
 
         if (PixelXpert.get().hasRootAccess()) {
             try {
-                // Read the HTML content via root shell
-                Process process = Runtime.getRuntime().exec(new String[]{"su", "-c", "cat /data/adb/modules/PixelXpert-Minimal/webroot/index.html"});
-                BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+                // Read the HTML content via libsu Root Shell
+                List<String> output = Shell.cmd("cat /data/adb/modules/PixelXpert-Minimal/webroot/index.html").exec().getOut();
                 StringBuilder htmlBuilder = new StringBuilder();
-                String line;
-                while ((line = reader.readLine()) != null) {
+                for (String line : output) {
                     htmlBuilder.append(line).append("\n");
                 }
-                process.waitFor();
 
                 String htmlContent = htmlBuilder.toString();
                 if (htmlContent.trim().isEmpty()) {
@@ -76,14 +76,13 @@ public class SettingsActivity extends Activity {
         @android.webkit.JavascriptInterface
         public String exec(String command) {
             try {
-                Process process = Runtime.getRuntime().exec(new String[]{"su", "-c", command});
-                BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+                Shell.Result result = Shell.cmd(command).exec();
+                int exitCode = result.getCode();
+
                 StringBuilder stdout = new StringBuilder();
-                String line;
-                while ((line = reader.readLine()) != null) {
+                for (String line : result.getOut()) {
                     stdout.append(line).append("\n");
                 }
-                int exitCode = process.waitFor();
 
                 // Return a JSON string that mimics the KSU return format: { errno: 0, stdout: "..." }
                 String json = "{\"errno\": " + exitCode + ", \"stdout\": \"" + stdout.toString().replace("\"", "\\\"").replace("\n", "\\n") + "\"}";

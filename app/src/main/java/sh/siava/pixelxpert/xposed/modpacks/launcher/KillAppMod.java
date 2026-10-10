@@ -8,7 +8,7 @@ import android.graphics.drawable.GradientDrawable;
 import android.util.TypedValue;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
-import android.widget.ImageView;
+import android.widget.ImageButton;
 import android.widget.Toast;
 
 import java.io.DataOutputStream;
@@ -45,7 +45,7 @@ public class KillAppMod extends XposedModPack {
             try {
                 FrameLayout taskView = (FrameLayout) param.thisObject;
 
-                ImageView killButton = new ImageView(mContext);
+                ImageButton killButton = new ImageButton(mContext, null, android.R.attr.borderlessButtonStyle);
                 int closeIconId = mContext.getResources().getIdentifier("ic_close", "drawable", mContext.getPackageName());
                 if (closeIconId != 0) {
                     killButton.setImageResource(closeIconId);
@@ -71,6 +71,9 @@ public class KillAppMod extends XposedModPack {
                 lp.topMargin = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 16, mContext.getResources().getDisplayMetrics());
                 lp.rightMargin = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 16, mContext.getResources().getDisplayMetrics());
                 killButton.setLayoutParams(lp);
+
+                // Elevate above task view to ensure clicks are caught
+                killButton.setElevation(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 4, mContext.getResources().getDisplayMetrics()));
 
                 killButton.setOnClickListener(v -> {
                     try {

@@ -12,10 +12,8 @@ import android.util.TypedValue;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
-import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
-import android.widget.ImageView;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -80,22 +78,22 @@ public class HideAppMod extends XposedModPack {
             try {
                 FrameLayout taskView = (FrameLayout) param.thisObject;
 
-                ImageView hideButton = new ImageView(mContext);
-                int hideIconId = mContext.getResources().getIdentifier("ic_collapse", "drawable", mContext.getPackageName());
+                ImageButton hideButton = new ImageButton(mContext, null, android.R.attr.borderlessButtonStyle);
+                int hideIconId = mContext.getResources().getIdentifier("ic_hide_app", "drawable", mContext.getPackageName());
                 if (hideIconId != 0) {
                     hideButton.setImageResource(hideIconId);
                 } else {
                     hideButton.setImageResource(android.R.drawable.ic_menu_close_clear_cancel); // Fallback
                 }
 
-                hideButton.setColorFilter(Color.WHITE);
+                // Add proper padding and size
+                int padding = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 8, mContext.getResources().getDisplayMetrics());
+                hideButton.setPadding(padding, padding, padding, padding);
+
                 GradientDrawable bg = new GradientDrawable();
                 bg.setColor(0x80000000);
                 bg.setShape(GradientDrawable.OVAL);
                 hideButton.setBackground(bg);
-
-                int padding = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 8, mContext.getResources().getDisplayMetrics());
-                hideButton.setPadding(padding, padding, padding, padding);
 
                 FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
                         (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 40, mContext.getResources().getDisplayMetrics()),
@@ -107,6 +105,9 @@ public class HideAppMod extends XposedModPack {
                 lp.leftMargin = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 16, mContext.getResources().getDisplayMetrics());
                 hideButton.setLayoutParams(lp);
 
+                // Elevate above task view to ensure clicks are caught
+                hideButton.setElevation(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 4, mContext.getResources().getDisplayMetrics()));
+
                 hideButton.setOnClickListener(v -> {
                     try {
                         Object task = callMethod(taskView, "getTask");
@@ -116,7 +117,7 @@ public class HideAppMod extends XposedModPack {
                             String packageName = (String) callMethod(componentName, "getPackageName");
                             addHiddenApp(packageName);
 
-                            // Remove task from RecentsView
+                            // Remove task from RecentsView visually
                             Object recentsView = callMethod(taskView, "getRecentsView");
                             if (recentsView != null) {
                                 callMethod(recentsView, "removeView", taskView);

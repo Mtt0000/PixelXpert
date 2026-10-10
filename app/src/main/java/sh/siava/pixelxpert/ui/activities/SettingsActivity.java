@@ -8,7 +8,8 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Toast;
 
-import java.io.File;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 
 import sh.siava.pixelxpert.PixelXpert;
 
@@ -23,27 +24,73 @@ public class SettingsActivity extends Activity {
         WebSettings webSettings = webView.getSettings();
         webSettings.setJavaScriptEnabled(true);
         webSettings.setDomStorageEnabled(true);
-        webSettings.setAllowFileAccess(true);
-        webSettings.setAllowFileAccessFromFileURLs(true);
-        webSettings.setAllowUniversalAccessFromFileURLs(true);
 
-        webView.setWebViewClient(new WebViewClient());
-        webView.setWebChromeClient(new WebChromeClient());
-
-        // Check if root is available and inject su execution wrapper if needed,
-        // though KernelSU usually handles this automatically in its webroot environment
-        // if opened through the KernelSU app. We will just load the file.
-        // It requires the module to be installed.
-        File webrootFile = new File("/data/adb/modules/PixelXpert-Minimal/webroot/index.html");
+        // This is necessary because loading file:///data/adb directly will
+        // result in ERR_FILE_NOT_FOUND or ERR_ACCESS_DENIED for regular apps
+        // since /data/adb is strictly root-only readable on newer Androids.
 
         if (PixelXpert.get().hasRootAccess()) {
-             // For testing, we can load it directly via su if it's not readable by the app,
-             // or we can assume it's readable if permissions are set correctly.
-             // Usually, KSU modules have webroot readable by system/shell.
-             webView.loadUrl("file:///data/adb/modules/PixelXpert-Minimal/webroot/index.html");
+            try {
+                // Read the HTML content via root shell
+                Process process = Runtime.getRuntime().exec(new String[]{"su", "-c", "cat /data/adb/modules/PixelXpert-Minimal/webroot/index.html"});
+                BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+                StringBuilder htmlBuilder = new StringBuilder();
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    htmlBuilder.append(line).append("\n");
+                }
+                process.waitFor();
+
+                String htmlContent = htmlBuilder.toString();
+                if (htmlContent.trim().isEmpty()) {
+                    throw new Exception("Webroot empty or module not installed.");
+                }
+
+                // KSU uses a specific environment, but since our GUI only executes shell commands,
+                // we'll inject a mock `ksu` object that performs su commands via a JavascriptInterface
+                // or just load the HTML if it relies on KSU app's internal injection.
+                // NOTE: the KSU app automatically injects `ksu.exec` into webviews it owns,
+                // but for our own app, we need to bridge it.
+
+                webView.addJavascriptInterface(new RootBridge(), "ksuRootBridge");
+
+                // Inject the JS bridge to replace `ksu.exec` with our own bridge
+                String injectedHtml = htmlContent.replace("<script>",
+                    "<script>\n" +
+                    "window.ksu = { exec: function(cmd) { return JSON.parse(ksuRootBridge.exec(cmd)); } };\n"
+                );
+
+                webView.setWebViewClient(new WebViewClient());
+                webView.setWebChromeClient(new WebChromeClient());
+                webView.loadDataWithBaseURL(null, injectedHtml, "text/html", "UTF-8", null);
+
+            } catch (Exception e) {
+                Toast.makeText(this, "Failed to load module WebGUI. Is PixelXpert installed in Magisk/KernelSU?", Toast.LENGTH_LONG).show();
+            }
         } else {
-             Toast.makeText(this, "Root access not available. Settings might not apply.", Toast.LENGTH_LONG).show();
-             webView.loadUrl("file:///data/adb/modules/PixelXpert-Minimal/webroot/index.html");
+             Toast.makeText(this, "Root access required to configure module.", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    public class RootBridge {
+        @android.webkit.JavascriptInterface
+        public String exec(String command) {
+            try {
+                Process process = Runtime.getRuntime().exec(new String[]{"su", "-c", command});
+                BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+                StringBuilder stdout = new StringBuilder();
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    stdout.append(line).append("\n");
+                }
+                int exitCode = process.waitFor();
+
+                // Return a JSON string that mimics the KSU return format: { errno: 0, stdout: "..." }
+                String json = "{\"errno\": " + exitCode + ", \"stdout\": \"" + stdout.toString().replace("\"", "\\\"").replace("\n", "\\n") + "\"}";
+                return json;
+            } catch (Exception e) {
+                return "{\"errno\": -1, \"stdout\": \"\"}";
+            }
         }
     }
 }

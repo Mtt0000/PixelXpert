@@ -1,6 +1,5 @@
 package sh.siava.pixelxpert;
 
-import static sh.siava.pixelxpert.utils.AppUtils.restartSelf;
 import static sh.siava.pixelxpert.Constants.DEFAULT_PREFS_FILE_NAME;
 import static sh.siava.pixelxpert.Constants.LAUNCH_REASON_XPOSED_SERVICE_FAIL;
 
@@ -32,14 +31,12 @@ import java.util.concurrent.TimeUnit;
 
 import io.github.libxposed.service.XposedService;
 import io.github.libxposed.service.XposedServiceHelper;
-import sh.siava.pixelxpert.service.RootProvider;
 import sh.siava.pixelxpert.utils.ExtendedSharedPreferences;
 import sh.siava.pixelxpert.utils.PreferenceXMLParser;
 
 
 public class PixelXpert extends Application {
 
-	/** @noinspection unused*/
 	public static final String TAG = "PixelXpertSingleton";
 	private final Handler mainThreadHandler = new Handler(Looper.getMainLooper());
 
@@ -49,7 +46,6 @@ public class PixelXpert extends Application {
 	public final CountDownLatch mRootServiceConnected = new CountDownLatch(1);
 
 	private ServiceConnection mCoreRootServiceConnection;
-	private IRootProviderService mCoreRootService;
 	private XposedService mXposedService;
 
 	public void onCreate() {
@@ -64,7 +60,6 @@ public class PixelXpert extends Application {
 
 		initiatePreferences(false);
 
-		tryConnectRootService();
 		DynamicColors.applyToActivitiesIfAvailable(this);
 
 		tryConnectXposedService(service -> {});
@@ -127,12 +122,6 @@ public class PixelXpert extends Application {
 		catch (Throwable ignored){}
 	}
 
-	/** @noinspection unused*/
-	public IRootProviderService getRootService()
-	{
-		return mCoreRootService;
-	}
-
 	public static PixelXpert get() {
 		if (instance == null) {
 			instance = new PixelXpert();
@@ -140,83 +129,10 @@ public class PixelXpert extends Application {
 		return instance;
 	}
 
-	/** @noinspection BooleanMethodIsAlwaysInverted*/
-	public boolean isCoreRootServiceBound() {
-		return mCoreRootServiceBound;
-	}
-
 	public boolean hasRootAccess()
 	{
 		return Shell.getShell().isRoot();
 	}
-
-	public void tryConnectRootService()
-	{
-		new Thread(() -> {
-			for (int i = 0; i < 2; i++) {
-				if (connectRootService())
-					break;
-			}
-		}).start();
-	}
-
-	private boolean connectRootService() {
-		try {
-			// Start RootService connection
-			Intent intent = new Intent(this, RootProvider.class);
-			mCoreRootServiceConnection = new ServiceConnection() {
-				@Override
-				public void onServiceConnected(ComponentName name, IBinder service) {
-					mCoreRootServiceBound = true;
-					mRootServiceConnected.countDown();
-					mCoreRootService = IRootProviderService.Stub.asInterface(service);
-				}
-
-				@Override
-				public void onServiceDisconnected(ComponentName name) {
-					mCoreRootServiceBound = false;
-					mRootServiceConnected.countDown();
-				}
-			};
-
-			mainThreadHandler.post(() -> RootService.bind(intent, mCoreRootServiceConnection));
-
-			return mRootServiceConnected.await(5, TimeUnit.SECONDS);
-		} catch (Exception ignored) {
-			return false;
-		}
-	}
-
-	public void getXposedService(XposedServiceCallback callback, boolean restartOnFail)
-	{
-		new Thread(() -> {
-			int counter = 0;
-			//we give it 1 second to bind to service. Otherwise, we'll FC
-			while (mXposedService == null && counter < 5)
-			{
-				counter++;
-				try {
-					//noinspection BusyWait
-					Thread.sleep(200);
-				} catch (InterruptedException ignored) {}
-			}
-			if(mXposedService != null) {
-				callback.serviceReady(mXposedService);
-			}
-			else
-			{
-				//Xposed Service can't be bound because of a bug of on their side. FC will fix it
-				if(restartOnFail) {
-					restartSelf(LAUNCH_REASON_XPOSED_SERVICE_FAIL);
-				}
-				else
-				{
-					Log.d(TAG, "getXposedService: didn't get xposed service but won't retry");
-				}
-			}
-		}).start();
-	}
-
 
 	public String[] runRootCommand(String command) {
 		try {

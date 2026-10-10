@@ -1,45 +1,31 @@
 package sh.siava.pixelxpert.xposed;
 
 import static android.content.Context.CONTEXT_IGNORE_SECURITY;
-import static de.robv.android.xposed.XposedHelpers.getObjectField;
-import static de.robv.android.xposed.XposedHelpers.setObjectField;
 import static sh.siava.pixelxpert.BuildConfig.APPLICATION_ID;
 import static sh.siava.pixelxpert.xposed.XPrefs.Xprefs;
 import static sh.siava.pixelxpert.xposed.utils.BootLoopProtector.isBootLooped;
 
 import android.annotation.SuppressLint;
 import android.app.Instrumentation;
-import android.content.ComponentName;
 import android.content.Context;
-import android.content.Intent;
-import android.content.ServiceConnection;
 import android.content.res.Resources;
-import android.os.IBinder;
-import android.os.RemoteException;
 
 import androidx.annotation.NonNull;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.LinkedList;
-import java.util.Objects;
-import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 
 import io.github.libxposed.api.XposedModule;
 import io.github.libxposed.api.XposedModuleInterface;
 import sh.siava.pixelxpert.BuildConfig;
 import sh.siava.pixelxpert.Constants;
-import sh.siava.pixelxpert.IPixelXpertProxy;
 import sh.siava.pixelxpert.R;
-import sh.siava.pixelxpert.service.PixelXpertProxy;
 import sh.siava.pixelxpert.xposed.utils.SystemUtils;
 import sh.siava.pixelxpert.xposed.utils.reflection.ReflectedClass;
 import sh.siava.pixelxpert.xposed.utils.toolkit.Logger;
 
-public class XPLauncher extends XposedModule implements ServiceConnection {
+public class XPLauncher extends XposedModule {
 	public static String processName = "";
 	public static boolean isSystemServer = false;
 
@@ -48,9 +34,6 @@ public class XPLauncher extends XposedModule implements ServiceConnection {
 	@SuppressLint("StaticFieldLeak")
 	static XPLauncher instance;
 
-	private CountDownLatch rootProxyCountdown = new CountDownLatch(1);
-	private static IPixelXpertProxy rootProxyIPC;
-	private static final Queue<ProxyRunnable> proxyQueue = new LinkedList<>();
 	private static boolean TELECOM_SERVER_LOADED = false;
 	public static Resources moduleResources;
 
@@ -74,21 +57,9 @@ public class XPLauncher extends XposedModule implements ServiceConnection {
 		ReflectedClass.setFrameworkClassloader(SSSP.getClassLoader());
 	}
 
-	private static void hook17BetaAudioManagerSRWorkaround(PackageReadyParam PRParam) {
-		ReflectedClass.of("android.media.AudioManager", PRParam.getClassLoader())
-				.before("requestAudioFocus")
-				.run(instance,param -> {
-					if(getObjectField(param.thisObject, "mApplicationContext") == null) {
-						setObjectField(param.thisObject, "mApplicationContext", getObjectField(param.thisObject, "mOriginalContext"));
-					}
-				});
-	}
-
 	@Override
 	public void onPackageReady(@NonNull PackageReadyParam PRParam){
 		ReflectedClass.setDefaultXposedInterface(this);
-
-		hook17BetaAudioManagerSRWorkaround(PRParam);
 
 		if (isSystemServer && !PRParam.getPackageName().equals(Constants.TELECOM_SERVER_PACKAGE)) {
 			ReflectedClass PhoneWindowManagerClass = ReflectedClass.of("com.android.server.policy.PhoneWindowManager");
@@ -174,10 +145,6 @@ public class XPLauncher extends XposedModule implements ServiceConnection {
 	private void loadModPacks(PackageReadyParam PRParam) {
 		ReflectedClass.setDefaultClassloader(PRParam.getClassLoader());
 
-		if (Arrays.asList(moduleResources.getStringArray(R.array.root_requirement)).contains(PRParam.getPackageName())) {
-			forceConnectRootService();
-		}
-
 		ModPacks.getModPacks()
 				.forEach(modPackData -> {
 					String partOfProcessName = modPackData.targetsMainProcess ? "" : modPackData.childProcessName;
@@ -205,84 +172,5 @@ public class XPLauncher extends XposedModule implements ServiceConnection {
 			Logger.log("Start Error Dump - Occurred in " + thisClass.getName());
 			Logger.log(T);
 		}
-	}
-
-	private void forceConnectRootService() {
-		new Thread(() -> {
-			while (SystemUtils.UserManager() == null
-					       || !SystemUtils.UserManager().isUserUnlocked()) //device is still CE encrypted
-			{
-				SystemUtils.threadSleep(2000);
-			}
-			SystemUtils.threadSleep(5000); //wait for the unlocked account to settle down a bit
-
-			while (rootProxyIPC == null) {
-				connectRootService();
-				SystemUtils.threadSleep(5000);
-			}
-		}).start();
-	}
-
-	private void connectRootService() {
-		try {
-			Intent intent = new Intent();
-			intent.setComponent(new ComponentName(APPLICATION_ID, PixelXpertProxy.class.getName()));
-			mContext.bindService(intent, instance, Context.BIND_AUTO_CREATE | Context.BIND_ADJUST_WITH_ACTIVITY);
-		} catch (Throwable t) {
-			Logger.log(t);
-		}
-	}
-
-	@Override
-	public void onServiceConnected(ComponentName name, IBinder service) {
-		rootProxyIPC = IPixelXpertProxy.Stub.asInterface(service);
-		rootProxyCountdown.countDown();
-
-		synchronized (proxyQueue) {
-			while (!proxyQueue.isEmpty()) {
-				try {
-					Objects.requireNonNull(proxyQueue.poll()).run(rootProxyIPC);
-				} catch (Throwable ignored) {
-				}
-			}
-		}
-	}
-
-	@Override
-	public void onServiceDisconnected(ComponentName name) {
-		rootProxyIPC = null;
-
-		forceConnectRootService();
-	}
-
-	public static IPixelXpertProxy getRootProviderProxy() {
-		if (rootProxyIPC == null) {
-			instance.rootProxyCountdown = new CountDownLatch(1);
-			instance.forceConnectRootService();
-			try {
-				//noinspection ResultOfMethodCallIgnored
-				instance.rootProxyCountdown.await(5, TimeUnit.SECONDS);
-			} catch (Throwable ignored) {
-			}
-		}
-		return rootProxyIPC;
-	}
-
-	public static void enqueueProxyCommand(ProxyRunnable runnable) {
-		if (rootProxyIPC != null) {
-			try {
-				runnable.run(rootProxyIPC);
-			} catch (RemoteException ignored) {
-			}
-		} else {
-			synchronized (proxyQueue) {
-				proxyQueue.add(runnable);
-			}
-			instance.forceConnectRootService();
-		}
-	}
-
-	public interface ProxyRunnable {
-		void run(IPixelXpertProxy proxy) throws RemoteException;
 	}
 }

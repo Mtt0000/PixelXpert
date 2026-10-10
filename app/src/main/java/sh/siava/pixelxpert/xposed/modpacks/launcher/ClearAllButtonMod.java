@@ -24,7 +24,7 @@ import sh.siava.pixelxpert.xposed.utils.KSUConfigReader;
 public class ClearAllButtonMod extends XposedModPack {
 	private Object recentView;
 	private static boolean RecentClearAllReposition = true;
-	private android.widget.Button clearAllButton;
+	private android.widget.ImageButton clearAllButton;
 
 	public ClearAllButtonMod(Context context) {
 		super(context);
@@ -77,39 +77,34 @@ public class ClearAllButtonMod extends XposedModPack {
 							actionButtonsView = parent;
 						}
 
-						int clearAllResId = mContext.getResources().getIdentifier("recents_clear_all", "string", mContext.getPackageName());
-						CharSequence clearAllText = clearAllResId != 0 ? mContext.getResources().getString(clearAllResId) : "Clear all";
+                        clearAllButton = new android.widget.ImageButton(mContext, null, android.R.attr.borderlessButtonStyle);
+                        int clearAllResId = mContext.getResources().getIdentifier("ic_clear_all", "drawable", mContext.getPackageName());
+                        if (clearAllResId != 0) {
+                            clearAllButton.setImageResource(clearAllResId);
+                        } else {
+                            clearAllButton.setImageResource(android.R.drawable.ic_menu_close_clear_cancel);
+                        }
 
-						int layoutId = mContext.getResources().getIdentifier("clear_all_button", "layout", mContext.getPackageName());
-						if (layoutId != 0) {
-							clearAllButton = (android.widget.Button) android.view.LayoutInflater.from(mContext).inflate(layoutId, actionButtonsView, false);
-							clearAllButton.setText(clearAllText);
-						} else {
-							clearAllButton = new android.widget.Button(mContext, null, android.R.attr.borderlessButtonStyle);
-							clearAllButton.setText(clearAllText);
-							clearAllButton.setTextColor(Color.WHITE);
-							clearAllButton.setAllCaps(false);
+                        clearAllButton.setColorFilter(Color.WHITE);
 
-							// Set the background as a semi-transparent black pill
-							GradientDrawable background = new GradientDrawable();
-							background.setColor(0x80000000); // Semi-transparent black
-							background.setCornerRadius(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 24, mContext.getResources().getDisplayMetrics()));
-							clearAllButton.setBackground(background);
+                        // Set the background as a semi-transparent black pill
+                        GradientDrawable background = new GradientDrawable();
+                        background.setColor(0x80000000); // Semi-transparent black
+                        background.setShape(GradientDrawable.OVAL);
+                        clearAllButton.setBackground(background);
 
-							// Set padding to match other buttons (Screenshot/Select)
-							int paddingHorizontal = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 16, mContext.getResources().getDisplayMetrics());
-							int paddingVertical = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 8, mContext.getResources().getDisplayMetrics());
-							clearAllButton.setPadding(paddingHorizontal, paddingVertical, paddingHorizontal, paddingVertical);
+                        // Set padding
+                        int padding = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 12, mContext.getResources().getDisplayMetrics());
+                        clearAllButton.setPadding(padding, padding, padding, padding);
 
-							android.widget.LinearLayout.LayoutParams params = new android.widget.LinearLayout.LayoutParams(
-									ViewGroup.LayoutParams.WRAP_CONTENT,
-									ViewGroup.LayoutParams.WRAP_CONTENT
-							);
+                        android.widget.LinearLayout.LayoutParams params = new android.widget.LinearLayout.LayoutParams(
+                                (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 48, mContext.getResources().getDisplayMetrics()),
+                                (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 48, mContext.getResources().getDisplayMetrics())
+                        );
 
-							// Add margin right
-							params.rightMargin = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 8, mContext.getResources().getDisplayMetrics());
-							clearAllButton.setLayoutParams(params);
-						}
+                        // Add margin right
+                        params.rightMargin = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 8, mContext.getResources().getDisplayMetrics());
+                        clearAllButton.setLayoutParams(params);
 
 						clearAllButton.setOnClickListener(v -> {
 							if (recentView != null) {

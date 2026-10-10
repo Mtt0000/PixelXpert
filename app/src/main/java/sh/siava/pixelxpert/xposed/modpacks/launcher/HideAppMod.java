@@ -3,7 +3,6 @@ package sh.siava.pixelxpert.xposed.modpacks.launcher;
 import static android.view.View.GONE;
 import static android.view.View.VISIBLE;
 import static de.robv.android.xposed.XposedHelpers.callMethod;
-import static de.robv.android.xposed.XposedHelpers.findMethodBestMatch;
 
 import android.app.AlertDialog;
 import android.content.Context;
@@ -15,8 +14,8 @@ import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.FrameLayout;
+import android.widget.ImageButton;
 import android.widget.ImageView;
-import android.widget.ListView;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -26,7 +25,6 @@ import io.github.libxposed.api.XposedModuleInterface;
 import sh.siava.pixelxpert.R;
 import sh.siava.pixelxpert.xposed.XposedModPack;
 import sh.siava.pixelxpert.xposed.annotations.LauncherModPack;
-import sh.siava.pixelxpert.utils.ExtendedSharedPreferences;
 import sh.siava.pixelxpert.xposed.utils.KSUConfigReader;
 import sh.siava.pixelxpert.xposed.utils.reflection.ReflectedClass;
 import sh.siava.pixelxpert.xposed.utils.toolkit.Logger;
@@ -103,8 +101,10 @@ public class HideAppMod extends XposedModPack {
                         (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 40, mContext.getResources().getDisplayMetrics()),
                         (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 40, mContext.getResources().getDisplayMetrics())
                 );
-                lp.gravity = android.view.Gravity.TOP | android.view.Gravity.CENTER_HORIZONTAL;
+                // Place top left so it doesn't conflict with kill app on top right
+                lp.gravity = android.view.Gravity.TOP | android.view.Gravity.START;
                 lp.topMargin = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 16, mContext.getResources().getDisplayMetrics());
+                lp.leftMargin = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 16, mContext.getResources().getDisplayMetrics());
                 hideButton.setLayoutParams(lp);
 
                 hideButton.setOnClickListener(v -> {
@@ -134,7 +134,6 @@ public class HideAppMod extends XposedModPack {
         });
 
         // 2. Hide tasks in RecentsView that are in the hidden list
-        // Depending on launcher version, we hook updateTaskSize or bind
         TaskViewClass.after("bind").run(param -> {
             if (!enableHideApp) return;
             try {
@@ -147,7 +146,6 @@ public class HideAppMod extends XposedModPack {
                     FrameLayout taskView = (FrameLayout) param.thisObject;
                     if (getHiddenApps().contains(packageName)) {
                         taskView.setVisibility(GONE);
-                        // Also try to remove its layout params weight/size if needed to avoid gap
                         ViewGroup.LayoutParams lp = taskView.getLayoutParams();
                         lp.width = 0;
                         lp.height = 0;
@@ -161,36 +159,54 @@ public class HideAppMod extends XposedModPack {
             }
         });
 
-        // 3. Hidden Apps Manager Button in OverviewActionsView
+        // 3. Hidden Apps Manager Button in OverviewActionsView (as an icon button)
         OverviewActionsViewClass.after("onFinishInflate").run(param -> {
             if (!enableHideApp) return;
             try {
-                FrameLayout actionsView = (FrameLayout) param.thisObject;
+                FrameLayout parent = (FrameLayout) param.thisObject;
 
-                Button manageHiddenBtn = new Button(mContext, null, android.R.attr.borderlessButtonStyle);
-                manageHiddenBtn.setText("App Nascoste");
-                manageHiddenBtn.setTextColor(Color.WHITE);
-                manageHiddenBtn.setAllCaps(false);
+                ViewGroup actionButtonsView = null;
+                for (int i = 0; i < parent.getChildCount(); i++) {
+                    View child = parent.getChildAt(i);
+                    if (child instanceof android.widget.LinearLayout) {
+                        actionButtonsView = (ViewGroup) child;
+                        break;
+                    }
+                }
+
+                if (actionButtonsView == null) {
+                    actionButtonsView = parent;
+                }
+
+                ImageButton manageHiddenBtn = new ImageButton(mContext, null, android.R.attr.borderlessButtonStyle);
+                int historyIconId = mContext.getResources().getIdentifier("ic_history", "drawable", mContext.getPackageName());
+                if (historyIconId != 0) {
+                    manageHiddenBtn.setImageResource(historyIconId);
+                } else {
+                    manageHiddenBtn.setImageResource(android.R.drawable.ic_menu_info_details);
+                }
+                manageHiddenBtn.setColorFilter(Color.WHITE);
 
                 GradientDrawable bg = new GradientDrawable();
                 bg.setColor(0x80000000);
-                bg.setCornerRadius(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 24, mContext.getResources().getDisplayMetrics()));
+                bg.setShape(GradientDrawable.OVAL);
                 manageHiddenBtn.setBackground(bg);
 
-                FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
-                        ViewGroup.LayoutParams.WRAP_CONTENT,
-                        ViewGroup.LayoutParams.WRAP_CONTENT
+                int padding = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 8, mContext.getResources().getDisplayMetrics());
+                manageHiddenBtn.setPadding(padding, padding, padding, padding);
+
+                android.widget.LinearLayout.LayoutParams lp = new android.widget.LinearLayout.LayoutParams(
+                        (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 48, mContext.getResources().getDisplayMetrics()),
+                        (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 48, mContext.getResources().getDisplayMetrics())
                 );
-                lp.gravity = android.view.Gravity.TOP | android.view.Gravity.END;
-                lp.topMargin = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 16, mContext.getResources().getDisplayMetrics());
-                lp.rightMargin = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 16, mContext.getResources().getDisplayMetrics());
+                lp.rightMargin = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 8, mContext.getResources().getDisplayMetrics());
                 manageHiddenBtn.setLayoutParams(lp);
 
                 manageHiddenBtn.setOnClickListener(v -> {
-                    showHiddenAppsDialog(actionsView.getContext());
+                    showHiddenAppsDialog(parent.getContext());
                 });
 
-                actionsView.addView(manageHiddenBtn);
+                actionButtonsView.addView(manageHiddenBtn, 0);
             } catch (Throwable t) {
                 Logger.log("HideAppMod error in OverviewActionsView: " + t.getMessage());
             }

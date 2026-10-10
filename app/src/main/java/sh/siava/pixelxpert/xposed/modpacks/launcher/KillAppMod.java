@@ -1,19 +1,19 @@
 package sh.siava.pixelxpert.xposed.modpacks.launcher;
 
+import static de.robv.android.xposed.XposedHelpers.callMethod;
+
 import android.content.Context;
 import android.graphics.Color;
-import android.graphics.drawable.Drawable;
-import android.view.View;
+import android.graphics.drawable.GradientDrawable;
+import android.util.TypedValue;
 import android.view.ViewGroup;
-import android.widget.ImageView;
-import android.widget.LinearLayout;
-import android.widget.TextView;
+import android.widget.FrameLayout;
+import android.widget.ImageButton;
 import android.widget.Toast;
 
 import java.io.DataOutputStream;
 
 import io.github.libxposed.api.XposedModuleInterface;
-import sh.siava.pixelxpert.R;
 import sh.siava.pixelxpert.xposed.XposedModPack;
 import sh.siava.pixelxpert.xposed.annotations.LauncherModPack;
 import sh.siava.pixelxpert.xposed.utils.KSUConfigReader;
@@ -37,109 +37,68 @@ public class KillAppMod extends XposedModPack {
     public void onPackageLoaded(XposedModuleInterface.PackageReadyParam PRParam) throws Throwable {
         enableKillApp = KSUConfigReader.getBoolean("kill_app", true);
 
-        ReflectedClass TaskMenuViewClass = ReflectedClass.of("com.android.quickstep.views.TaskMenuView");
+        ReflectedClass TaskViewClass = ReflectedClass.of("com.android.quickstep.views.TaskView");
 
-        TaskMenuViewClass.after("populateAndLayoutMenu").run(param -> {
+        TaskViewClass.after("onFinishInflate").run(param -> {
             if (!enableKillApp) return;
 
             try {
-                ViewGroup taskMenuView = (ViewGroup) param.thisObject;
+                FrameLayout taskView = (FrameLayout) param.thisObject;
 
-                LinearLayout optionContainer = null;
-                for (int i = 0; i < taskMenuView.getChildCount(); i++) {
-                    View child = taskMenuView.getChildAt(i);
-                    if (child.getClass().getName().contains("LinearLayout") || child instanceof LinearLayout) {
-                        optionContainer = (LinearLayout) child;
-                        break;
-                    }
-                }
-
-                if (optionContainer == null) {
-                    // Fallback to searching all children of the view hierarchy
-                    for (int i = 0; i < taskMenuView.getChildCount(); i++) {
-                         if (taskMenuView.getChildAt(i) instanceof ViewGroup) {
-                             ViewGroup vg = (ViewGroup)taskMenuView.getChildAt(i);
-                             for (int j = 0; j < vg.getChildCount(); j++) {
-                                 if (vg.getChildAt(j) instanceof LinearLayout) {
-                                     optionContainer = (LinearLayout) vg.getChildAt(j);
-                                     break;
-                                 }
-                             }
-                         }
-                    }
-                }
-
-                if (optionContainer == null) return;
-
-                View firstChild = optionContainer.getChildCount() > 0 ? optionContainer.getChildAt(0) : null;
-
-                LinearLayout newOptionLayout = new LinearLayout(mContext);
-                newOptionLayout.setOrientation(LinearLayout.HORIZONTAL);
-                newOptionLayout.setClickable(true);
-                newOptionLayout.setFocusable(true);
-                newOptionLayout.setGravity(android.view.Gravity.CENTER_VERTICAL);
-
-                if (firstChild != null) {
-                    newOptionLayout.setPadding(firstChild.getPaddingLeft(), firstChild.getPaddingTop(), firstChild.getPaddingRight(), firstChild.getPaddingBottom());
-                    newOptionLayout.setBackground(firstChild.getBackground());
-                    newOptionLayout.setLayoutParams(firstChild.getLayoutParams());
-                } else {
-                    newOptionLayout.setPadding(32, 24, 32, 24);
-                }
-
-                ImageView iconView = new ImageView(mContext);
+                ImageButton killButton = new ImageButton(mContext, null, android.R.attr.borderlessButtonStyle);
                 int closeIconId = mContext.getResources().getIdentifier("ic_close", "drawable", mContext.getPackageName());
                 if (closeIconId != 0) {
-                    iconView.setImageResource(closeIconId);
+                    killButton.setImageResource(closeIconId);
                 } else {
-                    // Fallback icon
-                    iconView.setImageResource(android.R.drawable.ic_menu_close_clear_cancel);
+                    killButton.setImageResource(android.R.drawable.ic_menu_close_clear_cancel); // Fallback
                 }
 
-                // Color filter for icon
-                iconView.setColorFilter(Color.WHITE);
+                killButton.setColorFilter(Color.WHITE);
+                GradientDrawable bg = new GradientDrawable();
+                bg.setColor(0x80000000);
+                bg.setShape(GradientDrawable.OVAL);
+                killButton.setBackground(bg);
 
-                LinearLayout.LayoutParams iconParams = new LinearLayout.LayoutParams(
-                        (int) (24 * mContext.getResources().getDisplayMetrics().density),
-                        (int) (24 * mContext.getResources().getDisplayMetrics().density)
+                int padding = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 8, mContext.getResources().getDisplayMetrics());
+                killButton.setPadding(padding, padding, padding, padding);
+
+                FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
+                        (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 40, mContext.getResources().getDisplayMetrics()),
+                        (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 40, mContext.getResources().getDisplayMetrics())
                 );
-                iconParams.rightMargin = (int) (16 * mContext.getResources().getDisplayMetrics().density);
-                iconView.setLayoutParams(iconParams);
+                // Position top right
+                lp.gravity = android.view.Gravity.TOP | android.view.Gravity.END;
+                lp.topMargin = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 16, mContext.getResources().getDisplayMetrics());
+                lp.rightMargin = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 16, mContext.getResources().getDisplayMetrics());
+                killButton.setLayoutParams(lp);
 
-                TextView textView = new TextView(mContext);
-                textView.setText("Arresto forzato"); // Localization later
-                textView.setTextSize(16);
-                textView.setTextColor(Color.WHITE);
+                // Elevate above task view to ensure clicks are caught
+                killButton.setElevation(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 4, mContext.getResources().getDisplayMetrics()));
 
-                newOptionLayout.addView(iconView);
-                newOptionLayout.addView(textView);
-
-                // Fetch package name from TaskView
-                Object taskView = de.robv.android.xposed.XposedHelpers.callMethod(param.thisObject, "getTaskView");
-                if (taskView == null) return;
-
-                Object task = de.robv.android.xposed.XposedHelpers.callMethod(taskView, "getTask");
-                if (task == null) return;
-
-                Object taskKey = task.getClass().getField("key").get(task);
-                Object componentName = de.robv.android.xposed.XposedHelpers.callMethod(taskKey, "getComponent");
-                String packageName = (String) de.robv.android.xposed.XposedHelpers.callMethod(componentName, "getPackageName");
-
-                newOptionLayout.setOnClickListener(v -> {
-                    killApp(packageName);
+                killButton.setOnClickListener(v -> {
                     try {
-                        de.robv.android.xposed.XposedHelpers.callMethod(param.thisObject, "close", true);
-                    } catch (Throwable ignored) {}
+                        Object task = callMethod(taskView, "getTask");
+                        if (task != null) {
+                            Object taskKey = task.getClass().getField("key").get(task);
+                            Object componentName = callMethod(taskKey, "getComponent");
+                            String packageName = (String) callMethod(componentName, "getPackageName");
+
+                            killApp(packageName);
+
+                            // Remove task from RecentsView visually
+                            Object recentsView = callMethod(taskView, "getRecentsView");
+                            if (recentsView != null) {
+                                callMethod(recentsView, "removeView", taskView);
+                            }
+                        }
+                    } catch (Throwable t) {
+                        Logger.log("KillAppMod error killing app: " + t.getMessage());
+                    }
                 });
 
-                if (optionContainer.getChildCount() > 1) {
-                    optionContainer.addView(newOptionLayout, 1);
-                } else {
-                    optionContainer.addView(newOptionLayout);
-                }
-
+                taskView.addView(killButton);
             } catch (Throwable t) {
-                Logger.log("KillAppMod error: " + t.getMessage());
+                Logger.log("KillAppMod error in TaskView: " + t.getMessage());
             }
         });
     }

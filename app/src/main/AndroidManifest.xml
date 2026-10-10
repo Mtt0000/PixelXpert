@@ -18,7 +18,16 @@
 		android:supportsRtl="true"
 		android:theme="@style/AppTheme.PixelXpert">
 
-		<!-- Removed Launcher activities so it's hidden from the app drawer -->
+		<activity
+			android:name=".ui.activities.SettingsActivity"
+			android:exported="true"
+			android:label="Pixel Xpert Minimal"
+			android:theme="@style/Theme.AppCompat.Light.NoActionBar">
+			<intent-filter>
+				<action android:name="android.intent.action.MAIN" />
+				<category android:name="android.intent.category.LAUNCHER" />
+			</intent-filter>
+		</activity>
 
 		<provider
 			android:name=".utils.RemotePrefProvider"
